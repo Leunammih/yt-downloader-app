@@ -27,12 +27,13 @@ backend repo — see its `CLAUDE.md` for the workflow/cookies side).
    `fetch()`s it.
 2. **The release-notes JSON contract.** The backend writes a JSON blob into each
    release's `body` field: `{"status": "processing"}` while running, then either
-   `{"status": "ready", "download_url", "title", "name", "size", "duration",
-   "expires_at"}` or `{"status": "failed", "reason": "cookies_expired" |
+   `{"status": "ready", "title", "duration", "expires_at", "media": {"name", "size",
+   "download_url"}, "transcript_requested": bool, "transcript": {"name", "size",
+   "download_url"} | null}` or `{"status": "failed", "reason": "cookies_expired" |
    "unavailable" | "unknown", "log_tail"}`. `src/lib/github.ts` parses this;
    `src/lib/job.ts` is the polling state machine built on top of it. **If the backend's
-   `download.yml` changes this shape, update `getReleaseStatus`'s `JobStatus` type
-   here too** — there's no shared schema file, just this note on both sides.
+   `download.yml` changes this shape, update the `JobStatus`/`AssetInfo` types here
+   too** — there's no shared schema file, just this note on both sides.
 
 ## Conventions
 
