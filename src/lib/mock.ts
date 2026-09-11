@@ -6,6 +6,8 @@ import type { JobStatus } from './github'
 export type MockScenario =
   | 'ready-audio'
   | 'ready-video'
+  | 'ready-with-transcript'
+  | 'ready-transcript-unavailable'
   | 'cookies_expired'
   | 'unavailable'
   | 'unknown'
@@ -14,6 +16,8 @@ export type MockScenario =
 export const MOCK_SCENARIOS: MockScenario[] = [
   'ready-audio',
   'ready-video',
+  'ready-with-transcript',
+  'ready-transcript-unavailable',
   'cookies_expired',
   'unavailable',
   'unknown',
@@ -31,21 +35,39 @@ export function getMockScenario(): MockScenario | undefined {
   return isScenario(value) ? value : undefined
 }
 
+// Tiny silent audio stub, just so the inline preview player has something to load.
+const STUB_MEDIA_URL =
+  'data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA'
+
 const READY_AUDIO: JobStatus = {
   status: 'ready',
   title: 'Me at the zoo',
-  name: 'Me_at_the_zoo_jNQXAC9IVRw.mp3',
-  size: 331053,
   duration: 19,
-  download_url:
-    'data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA', // tiny silent stub, just for the preview player
   expires_at: new Date(Date.now() + 55 * 60 * 1000).toISOString(),
+  media: { name: 'Me at the zoo.mp3', size: 331053, download_url: STUB_MEDIA_URL },
+  transcript_requested: false,
+  transcript: null,
 }
 
 const READY_VIDEO: JobStatus = {
   ...READY_AUDIO,
-  name: 'Me_at_the_zoo_jNQXAC9IVRw.mp4',
-  size: 533916,
+  media: { name: 'Me at the zoo.mp4', size: 533916, download_url: STUB_MEDIA_URL },
+}
+
+const READY_WITH_TRANSCRIPT: JobStatus = {
+  ...READY_AUDIO,
+  transcript_requested: true,
+  transcript: {
+    name: 'Me at the zoo (transcript).txt',
+    size: 842,
+    download_url: 'data:text/plain,Sample%20transcript%20text%20for%20preview%20only.',
+  },
+}
+
+const READY_TRANSCRIPT_UNAVAILABLE: JobStatus = {
+  ...READY_AUDIO,
+  transcript_requested: true,
+  transcript: null,
 }
 
 export function mockPoll(scenario: MockScenario, elapsedMs: number): JobStatus | null {
@@ -59,6 +81,10 @@ export function mockPoll(scenario: MockScenario, elapsedMs: number): JobStatus |
       return READY_AUDIO
     case 'ready-video':
       return READY_VIDEO
+    case 'ready-with-transcript':
+      return READY_WITH_TRANSCRIPT
+    case 'ready-transcript-unavailable':
+      return READY_TRANSCRIPT_UNAVAILABLE
     case 'cookies_expired':
       return {
         status: 'failed',

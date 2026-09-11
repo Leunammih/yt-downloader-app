@@ -11,16 +11,22 @@ export interface GitHubConfig {
   repo: string
 }
 
+export interface AssetInfo {
+  name: string
+  size: number
+  download_url: string
+}
+
 export type JobStatus =
   | { status: 'processing'; format?: 'video' | 'audio' }
   | {
       status: 'ready'
       title: string
-      name: string
-      size: number
       duration: number | null
-      download_url: string
       expires_at: string
+      media: AssetInfo
+      transcript_requested: boolean
+      transcript: AssetInfo | null
     }
   | {
       status: 'failed'
@@ -53,7 +59,7 @@ function messageForStatus(status: number): string {
 
 export async function dispatchDownload(
   cfg: GitHubConfig,
-  params: { url: string; format: 'video' | 'audio'; runKey: string },
+  params: { url: string; format: 'video' | 'audio'; runKey: string; includeTranscript: boolean },
 ): Promise<void> {
   const res = await fetch(
     `${API}/repos/${cfg.repo}/actions/workflows/download.yml/dispatches`,
@@ -62,7 +68,14 @@ export async function dispatchDownload(
       headers: { ...authHeaders(cfg.token), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ref: 'main',
-        inputs: { url: params.url, format: params.format, run_key: params.runKey },
+        inputs: {
+          url: params.url,
+          format: params.format,
+          run_key: params.runKey,
+          // workflow_dispatch inputs are always strings over the API, even for a
+          // boolean-typed input — the workflow compares against the string "true".
+          include_transcript: params.includeTranscript ? 'true' : 'false',
+        },
       }),
     },
   )

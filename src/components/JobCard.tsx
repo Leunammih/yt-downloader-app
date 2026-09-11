@@ -48,22 +48,23 @@ export default function JobCard({ job, repo, onReset, onRetry }: Props) {
 
   if (job.phase === 'ready' && job.result?.status === 'ready') {
     const r = job.result
+    const { media, transcript } = r
     const expired = isExpired(r.expires_at)
     return (
       <div className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950">
         <div>
           <p className="font-medium text-zinc-900 dark:text-zinc-100">{r.title}</p>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            {formatBytes(r.size)} · {formatDuration(r.duration)} ·{' '}
+            {formatBytes(media.size)} · {formatDuration(r.duration)} ·{' '}
             {expired ? 'link expired' : formatExpiresIn(r.expires_at)}
           </p>
         </div>
 
-        {!expired && r.name.endsWith('.mp3') && (
-          <audio controls preload="none" src={r.download_url} className="w-full" />
+        {!expired && media.name.endsWith('.mp3') && (
+          <audio controls preload="none" src={media.download_url} className="w-full" />
         )}
-        {!expired && (r.name.endsWith('.mp4') || r.name.endsWith('.mkv') || r.name.endsWith('.webm')) && (
-          <video controls preload="none" src={r.download_url} className="w-full rounded-lg" />
+        {!expired && (media.name.endsWith('.mp4') || media.name.endsWith('.mkv') || media.name.endsWith('.webm')) && (
+          <video controls preload="none" src={media.download_url} className="w-full rounded-lg" />
         )}
 
         {expired ? (
@@ -75,7 +76,7 @@ export default function JobCard({ job, repo, onReset, onRetry }: Props) {
           </button>
         ) : (
           <a
-            href={r.download_url}
+            href={media.download_url}
             // A plain navigation, not fetch(): the signed URL has no CORS header,
             // so this is the only way to actually get the bytes onto the phone.
             className="block rounded-xl bg-emerald-600 px-4 py-3 text-center text-base font-semibold text-white active:bg-emerald-700"
@@ -83,6 +84,22 @@ export default function JobCard({ job, repo, onReset, onRetry }: Props) {
             Save to Files
           </a>
         )}
+
+        {r.transcript_requested &&
+          (transcript ? (
+            !expired && (
+              <a
+                href={transcript.download_url}
+                className="block rounded-xl border border-emerald-600 px-4 py-3 text-center text-sm font-semibold text-emerald-700 dark:text-emerald-300"
+              >
+                Save transcript ({formatBytes(transcript.size)})
+              </a>
+            )
+          ) : (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              No captions available for this video — transcript wasn't saved.
+            </p>
+          ))}
 
         <button
           onClick={onReset}

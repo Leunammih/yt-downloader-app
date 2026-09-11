@@ -14,6 +14,7 @@ export interface HistoryEntry {
   runKey: string
   url: string
   format: 'video' | 'audio'
+  includeTranscript?: boolean
   title?: string
   status: 'processing' | 'ready' | 'failed'
   createdAt: number

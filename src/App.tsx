@@ -34,7 +34,7 @@ export default function App() {
   // otherwise re-triggering on every state change would refire it forever.
   useEffect(() => {
     if (shareParams.url) {
-      start(shareParams.url, shareParams.format ?? 'video')
+      start(shareParams.url, shareParams.format ?? 'video', false)
       setTab('download')
       const url = new URL(window.location.href)
       url.search = ''
@@ -45,17 +45,17 @@ export default function App() {
 
   const refreshHistory = () => setHistory(getHistory())
 
-  const handleSubmit = (url: string, format: 'video' | 'audio') => {
-    start(url, format)
+  const handleSubmit = (url: string, format: 'video' | 'audio', includeTranscript: boolean) => {
+    start(url, format, includeTranscript)
   }
 
   const handleRetry = () => {
-    if (job.url && job.format) start(job.url, job.format)
+    if (job.url && job.format) start(job.url, job.format, job.includeTranscript ?? false)
   }
 
   const handleRedownload = (entry: HistoryEntry) => {
     setTab('download')
-    start(entry.url, entry.format)
+    start(entry.url, entry.format, entry.includeTranscript ?? false)
   }
 
   const busy = job.phase === 'starting' || job.phase === 'processing'

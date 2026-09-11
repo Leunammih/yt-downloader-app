@@ -13,6 +13,7 @@ export interface JobState {
   runKey?: string
   url?: string
   format?: 'video' | 'audio'
+  includeTranscript?: boolean
   startedAt?: number
   elapsedMs: number
   result?: Extract<JobStatus, { status: 'ready' }>
@@ -49,20 +50,20 @@ export function useDownloadJob(cfg: GitHubConfig, mockScenario?: MockScenario) {
   }, [])
 
   const start = useCallback(
-    async (url: string, format: 'video' | 'audio') => {
+    async (url: string, format: 'video' | 'audio', includeTranscript: boolean) => {
       stop()
       const runKey = makeRunKey()
       const startedAt = Date.now()
-      setState({ phase: 'starting', runKey, url, format, startedAt, elapsedMs: 0 })
-      addHistoryEntry({ runKey, url, format, status: 'processing', createdAt: startedAt })
+      setState({ phase: 'starting', runKey, url, format, includeTranscript, startedAt, elapsedMs: 0 })
+      addHistoryEntry({ runKey, url, format, includeTranscript, status: 'processing', createdAt: startedAt })
 
       try {
         if (!mockScenario) {
-          await dispatchDownload(cfg, { url, format, runKey })
+          await dispatchDownload(cfg, { url, format, runKey, includeTranscript })
         }
       } catch (e) {
         const message = e instanceof GitHubError ? e.message : 'Could not reach GitHub. Check your connection.'
-        setState({ phase: 'error', runKey, url, format, startedAt, elapsedMs: 0, errorMessage: message })
+        setState({ phase: 'error', runKey, url, format, includeTranscript, startedAt, elapsedMs: 0, errorMessage: message })
         updateHistoryEntry(runKey, { status: 'failed' })
         return
       }
