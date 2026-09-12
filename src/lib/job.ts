@@ -14,8 +14,10 @@ export interface JobState {
   url?: string
   format?: 'video' | 'audio'
   includeTranscript?: boolean
+  quality?: string
   startedAt?: number
   elapsedMs: number
+  progress?: number
   result?: Extract<JobStatus, { status: 'ready' }>
   failure?: Extract<JobStatus, { status: 'failed' }>
   errorMessage?: string
@@ -50,20 +52,20 @@ export function useDownloadJob(cfg: GitHubConfig, mockScenario?: MockScenario) {
   }, [])
 
   const start = useCallback(
-    async (url: string, format: 'video' | 'audio', includeTranscript: boolean) => {
+    async (url: string, format: 'video' | 'audio', includeTranscript: boolean, quality?: string) => {
       stop()
       const runKey = makeRunKey()
       const startedAt = Date.now()
-      setState({ phase: 'starting', runKey, url, format, includeTranscript, startedAt, elapsedMs: 0 })
-      addHistoryEntry({ runKey, url, format, includeTranscript, status: 'processing', createdAt: startedAt })
+      setState({ phase: 'starting', runKey, url, format, includeTranscript, quality, startedAt, elapsedMs: 0 })
+      addHistoryEntry({ runKey, url, format, includeTranscript, quality, status: 'processing', createdAt: startedAt })
 
       try {
         if (!mockScenario) {
-          await dispatchDownload(cfg, { url, format, runKey, includeTranscript })
+          await dispatchDownload(cfg, { url, format, runKey, includeTranscript, quality })
         }
       } catch (e) {
         const message = e instanceof GitHubError ? e.message : 'Could not reach GitHub. Check your connection.'
-        setState({ phase: 'error', runKey, url, format, includeTranscript, startedAt, elapsedMs: 0, errorMessage: message })
+        setState({ phase: 'error', runKey, url, format, includeTranscript, quality, startedAt, elapsedMs: 0, errorMessage: message })
         updateHistoryEntry(runKey, { status: 'failed' })
         return
       }
@@ -101,6 +103,9 @@ export function useDownloadJob(cfg: GitHubConfig, mockScenario?: MockScenario) {
             setState((s) => ({ ...s, phase: 'failed', failure: result }))
             updateHistoryEntry(runKey, { status: 'failed' })
             return
+          }
+          if (result?.status === 'processing' && result.progress !== undefined) {
+            setState((s) => (s.runKey === runKey ? { ...s, progress: result.progress } : s))
           }
           // Still processing, or the placeholder release hasn't landed yet.
           pollTimeoutRef.current = window.setTimeout(poll, POLL_INTERVAL_MS)

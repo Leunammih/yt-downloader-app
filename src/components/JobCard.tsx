@@ -28,6 +28,7 @@ export default function JobCard({ job, repo, onReset, onRetry }: Props) {
   const actionsUrl = `https://github.com/${repo}/actions`
 
   if (job.phase === 'starting' || job.phase === 'processing') {
+    const hasProgress = job.progress !== undefined
     return (
       <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex items-center gap-3">
@@ -36,12 +37,21 @@ export default function JobCard({ job, repo, onReset, onRetry }: Props) {
             {PHASE_LABEL[job.phase]}
           </span>
           <span className="ml-auto text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
-            {formatElapsed(job.elapsedMs)}
+            {hasProgress ? `${Math.round(job.progress!)}%` : formatElapsed(job.elapsedMs)}
           </span>
         </div>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Usually done in under two minutes. You can leave this tab and come back.
-        </p>
+        {hasProgress ? (
+          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-red-500 transition-[width]"
+              style={{ width: `${Math.min(100, Math.max(0, job.progress!))}%` }}
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Usually done in under two minutes. You can leave this tab and come back.
+          </p>
+        )}
       </div>
     )
   }

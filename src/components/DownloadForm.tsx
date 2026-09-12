@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 
 interface Props {
-  onSubmit: (url: string, format: 'video' | 'audio', includeTranscript: boolean) => void
+  /** Kicks off the "Analyze" phase — quality/transcript are chosen afterward, in QualityPicker. */
+  onSubmit: (url: string, format: 'video' | 'audio') => void
   busy: boolean
   initialUrl?: string
   initialFormat?: 'video' | 'audio'
@@ -10,7 +11,6 @@ interface Props {
 export default function DownloadForm({ onSubmit, busy, initialUrl, initialFormat }: Props) {
   const [url, setUrl] = useState(initialUrl ?? '')
   const [format, setFormat] = useState<'video' | 'audio'>(initialFormat ?? 'video')
-  const [includeTranscript, setIncludeTranscript] = useState(false)
   const [pasteError, setPasteError] = useState(false)
 
   // A link arriving later via ?url= (e.g. a second Share Sheet hit while this tab
@@ -37,7 +37,7 @@ export default function DownloadForm({ onSubmit, busy, initialUrl, initialFormat
       className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault()
-        if (canSubmit) onSubmit(url.trim(), format, includeTranscript)
+        if (canSubmit) onSubmit(url.trim(), format)
       }}
     >
       <div className="flex flex-col gap-2">
@@ -94,23 +94,12 @@ export default function DownloadForm({ onSubmit, busy, initialUrl, initialFormat
         </div>
       </div>
 
-      <label className="flex items-center gap-3 rounded-xl border border-zinc-300 px-4 py-3 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
-        <input
-          type="checkbox"
-          checked={includeTranscript}
-          onChange={(e) => setIncludeTranscript(e.target.checked)}
-          disabled={busy}
-          className="h-4 w-4 rounded border-zinc-400 accent-red-600 disabled:opacity-50"
-        />
-        Also save transcript
-      </label>
-
       <button
         type="submit"
         disabled={!canSubmit}
         className="rounded-xl bg-red-600 px-4 py-3 text-base font-semibold text-white active:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {busy ? 'Working…' : 'Download'}
+        {busy ? 'Analyzing…' : 'Continue'}
       </button>
     </form>
   )

@@ -29,6 +29,34 @@
   Offered, not yet asked for: a "Copy setup link" button to transfer the token
   between contexts without retyping.
 
+- Quality picker + progress %, the three genuinely buildable items from Immanuel's
+  "add these functions" list (the rest — choosing a save folder, pausing the
+  server-side fetch, opening Files afterward — are hard iOS/Actions platform walls,
+  explained in chat rather than faked):
+  - New backend `analyze.yml`: metadata-only (`yt-dlp -J --skip-download`, no media
+    ever downloaded), returns the real distinct video resolutions available for
+    that specific URL (with approx size) and English-caption availability.
+  - New `form → picking → downloading` flow (`App.tsx`), replacing the old single-
+    step form: `DownloadForm` now just collects the link + format and dispatches
+    Analyze; `QualityPicker` shows the real resolutions plus the transcript
+    checkbox (with a `has_captions` hint) once Analyze returns; confirming there
+    dispatches `download.yml` with the chosen `quality`.
+  - `download.yml`'s two download steps now run yt-dlp in the background with
+    `--newline`, tail its own log every ~3s, and push a numeric `progress` into the
+    processing release notes; `JobCard` renders a real progress bar once numbers
+    start arriving (falls back to the old pulsing-dot + elapsed timer before that).
+  - Hit and fixed two separate `bash -e`/`pipefail` bugs building the progress
+    loop — both made *real* failures look like instant, logless crashes. Documented
+    in the backend `CLAUDE.md` so they don't get reintroduced.
+  - Verified for real: `analyze.yml` on the test video (correctly found only
+    240p/144p, `has_captions: true`); `download.yml` with an explicit non-default
+    `quality=144` — confirmed via `ffprobe` on the actual delivered file
+    (192×144, i.e. it really took effect, not just accepted-and-ignored).
+  - Verified in the Browser pane (mock mode): full form → picking → downloading →
+    ready flow including the progress bar reaching real percentages, both themes,
+    the analyze-failure card, and the new Settings "Downloads on iPhone" tips card.
+  - `tsc -b` and `vite build` clean.
+
 ## Open markers
 
 - 🟦 TASK · shortcut1 — build the 3-action Share Sheet Shortcut (steps in backend
@@ -37,19 +65,22 @@
 
 ## Check on your phone (current)
 
-1. **Download** tab → paste a YouTube link that has captions → check **Also save
-   transcript** → Audio → **Download** → expect a ready card with a **Save
-   transcript (…)** button below **Save to Files** → tap it → a `.txt` file with
-   readable (non-repeating) text appears in Files, named after the video title
-   (e.g. "Video Title (transcript).txt").
-2. Try a link you're confident has *no* captions, same checkbox on → expect the
-   ready card to show "No captions available for this video — transcript wasn't
-   saved" instead of a broken button.
-3. Check the saved media file's name in Files app — should read like the real
-   video title (with dots instead of spaces), not the old underscore+ID style.
+1. **Download** tab → paste a YouTube link → **Continue** → expect a short
+   "Analyzing…" card, then a list of real resolution buttons (not a fixed
+   1080/720/480/360 set — whatever that specific video actually has) with approx
+   sizes, plus "captions available" / "none found" next to the transcript checkbox.
+2. Pick a lower resolution (e.g. the smallest) → **Download** → expect the progress
+   card to show a moving **percentage and a filling bar**, not just a pulsing dot.
+3. Once ready → **Save to Files** → open the saved video's info in Files (or
+   AVPlayer/QuickLook) → confirm its resolution actually matches what you picked,
+   not always 1080p.
+4. **Settings** tab → scroll down → confirm a new "Downloads on iPhone" card
+   explains the save-folder setting and Safari's own Downloads button.
+5. Try **Back** from the quality-picker screen → confirm it returns to the link
+   form cleanly (not stuck, not double-submitting).
 
 ## Exact next step
 
-Do the phone checklist above (transcript feature, real video). Separately: `done
-shortcut1` once the Share Sheet Shortcut is built, and let me know which storage
-context (Safari tab / Home Screen icon) you want to standardize the token in.
+Do the phone checklist above. Separately: `done shortcut1` once the Share Sheet
+Shortcut is built, and let me know which storage context (Safari tab / Home Screen
+icon) you want to standardize the token in.

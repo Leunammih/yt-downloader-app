@@ -18,7 +18,7 @@ export interface AssetInfo {
 }
 
 export type JobStatus =
-  | { status: 'processing'; format?: 'video' | 'audio' }
+  | { status: 'processing'; format?: 'video' | 'audio'; progress?: number }
   | {
       status: 'ready'
       title: string
@@ -27,6 +27,27 @@ export type JobStatus =
       media: AssetInfo
       transcript_requested: boolean
       transcript: AssetInfo | null
+    }
+  | {
+      status: 'failed'
+      reason: 'cookies_expired' | 'unavailable' | 'unknown'
+      log_tail: string
+    }
+
+export interface VideoQuality {
+  height: number
+  label: string
+  approx_size: number | null
+}
+
+export type AnalyzeStatus =
+  | { status: 'processing' }
+  | {
+      status: 'ready'
+      title: string
+      duration: number | null
+      has_captions: boolean
+      video_qualities: VideoQuality[]
     }
   | {
       status: 'failed'
@@ -59,7 +80,14 @@ function messageForStatus(status: number): string {
 
 export async function dispatchDownload(
   cfg: GitHubConfig,
-  params: { url: string; format: 'video' | 'audio'; runKey: string; includeTranscript: boolean },
+  params: {
+    url: string
+    format: 'video' | 'audio'
+    runKey: string
+    includeTranscript: boolean
+    /** Preferred video height (e.g. "1080"). Omit/blank = the workflow's own default. Ignored for audio. */
+    quality?: string
+  },
 ): Promise<void> {
   const res = await fetch(
     `${API}/repos/${cfg.repo}/actions/workflows/download.yml/dispatches`,
@@ -75,7 +103,26 @@ export async function dispatchDownload(
           // workflow_dispatch inputs are always strings over the API, even for a
           // boolean-typed input — the workflow compares against the string "true".
           include_transcript: params.includeTranscript ? 'true' : 'false',
+          quality: params.quality ?? '',
         },
+      }),
+    },
+  )
+  if (!res.ok) throw new GitHubError(messageForStatus(res.status), res.status)
+}
+
+export async function dispatchAnalyze(
+  cfg: GitHubConfig,
+  params: { url: string; runKey: string },
+): Promise<void> {
+  const res = await fetch(
+    `${API}/repos/${cfg.repo}/actions/workflows/analyze.yml/dispatches`,
+    {
+      method: 'POST',
+      headers: { ...authHeaders(cfg.token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ref: 'main',
+        inputs: { url: params.url, run_key: params.runKey },
       }),
     },
   )
@@ -100,6 +147,27 @@ export async function getReleaseStatus(
     return JSON.parse(data.body) as JobStatus
   } catch {
     // Release exists but notes aren't valid JSON yet (write raced us) — treat as pending.
+    return null
+  }
+}
+
+/** Returns null while the placeholder release doesn't exist yet (still queued). */
+export async function getAnalyzeStatus(
+  cfg: GitHubConfig,
+  runKey: string,
+): Promise<AnalyzeStatus | null> {
+  const res = await fetch(
+    `${API}/repos/${cfg.repo}/releases/tags/${encodeURIComponent(runKey)}`,
+    { headers: authHeaders(cfg.token) },
+  )
+  if (res.status === 404) return null
+  if (!res.ok) throw new GitHubError(messageForStatus(res.status), res.status)
+
+  const data = (await res.json()) as { body?: string | null }
+  if (!data.body) return null
+  try {
+    return JSON.parse(data.body) as AnalyzeStatus
+  } catch {
     return null
   }
 }

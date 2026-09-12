@@ -73,6 +73,25 @@ export default function Settings({ cfg, onChange }: Props) {
         )}
       </div>
 
+      <div className="flex flex-col gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+        <p className="font-medium text-zinc-700 dark:text-zinc-200">Downloads on iPhone</p>
+        <p>
+          A website can't choose where a download is saved, or open Files
+          afterward — those are iOS/Safari settings, not something this app
+          controls:
+        </p>
+        <ul className="list-disc pl-5">
+          <li>
+            Save location / ask each time: <strong>Settings app → Safari → Downloads</strong>.
+          </li>
+          <li>
+            Pause, resume, retry, or "Show in Files" for any transfer in
+            progress: tap the <strong>⬇ Downloads button</strong> in Safari's own
+            toolbar.
+          </li>
+        </ul>
+      </div>
+
       <p className="text-xs text-zinc-400 dark:text-zinc-500">Build {__BUILD_ID__}</p>
     </div>
   )

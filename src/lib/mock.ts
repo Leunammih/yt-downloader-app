@@ -1,7 +1,7 @@
 // Dev-only fixtures for exercising every UI state without a real GitHub token or
 // workflow run. Enabled via ?mock=<scenario>. Gated on import.meta.env.DEV so
 // Vite's dead-code elimination drops it entirely from production builds.
-import type { JobStatus } from './github'
+import type { AnalyzeStatus, JobStatus } from './github'
 
 export type MockScenario =
   | 'ready-audio'
@@ -73,7 +73,8 @@ const READY_TRANSCRIPT_UNAVAILABLE: JobStatus = {
 export function mockPoll(scenario: MockScenario, elapsedMs: number): JobStatus | null {
   const processingUntil = scenario === 'slow' ? 30_000 : 3_000
   if (elapsedMs < processingUntil) {
-    return { status: 'processing', format: scenario === 'ready-video' ? 'video' : 'audio' }
+    const progress = Math.min(99, Math.round((elapsedMs / processingUntil) * 100))
+    return { status: 'processing', format: scenario === 'ready-video' ? 'video' : 'audio', progress }
   }
   switch (scenario) {
     case 'ready-audio':
@@ -103,6 +104,47 @@ export function mockPoll(scenario: MockScenario, elapsedMs: number): JobStatus |
         status: 'failed',
         reason: 'unknown',
         log_tail: 'ERROR: [youtube] Unexpected error occurred.',
+      }
+  }
+}
+
+export function mockAnalyzePoll(scenario: MockScenario, elapsedMs: number): AnalyzeStatus | null {
+  const processingUntil = scenario === 'slow' ? 5_000 : 1_500
+  if (elapsedMs < processingUntil) {
+    return { status: 'processing' }
+  }
+  switch (scenario) {
+    case 'cookies_expired':
+      return {
+        status: 'failed',
+        reason: 'cookies_expired',
+        log_tail:
+          "ERROR: [youtube] Sign in to confirm you're not a bot. Use --cookies-from-browser or --cookies for the authentication.",
+      }
+    case 'unavailable':
+      return {
+        status: 'failed',
+        reason: 'unavailable',
+        log_tail: 'ERROR: [youtube] Video unavailable. This video is private.',
+      }
+    case 'unknown':
+      return {
+        status: 'failed',
+        reason: 'unknown',
+        log_tail: 'ERROR: [youtube] Unexpected error occurred.',
+      }
+    default:
+      return {
+        status: 'ready',
+        title: 'Me at the zoo',
+        duration: 19,
+        has_captions: true,
+        video_qualities: [
+          { height: 1080, label: '1080p', approx_size: 42_000_000 },
+          { height: 720, label: '720p', approx_size: 21_000_000 },
+          { height: 480, label: '480p', approx_size: 9_500_000 },
+          { height: 360, label: '360p', approx_size: 5_200_000 },
+        ],
       }
   }
 }

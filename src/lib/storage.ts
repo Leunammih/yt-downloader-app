@@ -15,6 +15,8 @@ export interface HistoryEntry {
   url: string
   format: 'video' | 'audio'
   includeTranscript?: boolean
+  /** Preferred video height, e.g. "1080" — only meaningful when format is 'video'. */
+  quality?: string
   title?: string
   status: 'processing' | 'ready' | 'failed'
   createdAt: number

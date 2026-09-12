@@ -25,15 +25,28 @@ backend repo — see its `CLAUDE.md` for the workflow/cookies side).
    with curl 2026-09-11. So the backend resolves that signed URL server-side and puts
    it in the release notes; this app only ever **navigates** to it (`<a href>`), never
    `fetch()`s it.
-2. **The release-notes JSON contract.** The backend writes a JSON blob into each
-   release's `body` field: `{"status": "processing"}` while running, then either
-   `{"status": "ready", "title", "duration", "expires_at", "media": {"name", "size",
-   "download_url"}, "transcript_requested": bool, "transcript": {"name", "size",
-   "download_url"} | null}` or `{"status": "failed", "reason": "cookies_expired" |
-   "unavailable" | "unknown", "log_tail"}`. `src/lib/github.ts` parses this;
-   `src/lib/job.ts` is the polling state machine built on top of it. **If the backend's
-   `download.yml` changes this shape, update the `JobStatus`/`AssetInfo` types here
-   too** — there's no shared schema file, just this note on both sides.
+2. **The release-notes JSON contract**, split across two backend workflows —
+   `src/lib/github.ts` parses both; `src/lib/job.ts`/`src/lib/analyze.ts` are the
+   polling state machines built on top. **If either workflow's output shape changes,
+   update the matching type here too** — there's no shared schema file, just this
+   note on both sides.
+   - `download.yml` → `JobStatus`: `{"status":"processing","format"?,"progress"?}` →
+     `{"status":"ready","title","duration","expires_at","media":{"name","size",
+     "download_url"},"transcript_requested":bool,"transcript":AssetInfo|null}` or
+     `{"status":"failed","reason":"cookies_expired"|"unavailable"|"unknown","log_tail"}`
+   - `analyze.yml` → `AnalyzeStatus`: `{"status":"processing"}` →
+     `{"status":"ready","title","duration","has_captions":bool,
+     "video_qualities":[{"height","label","approx_size"}]}` or the same `"failed"`
+     shape as above
+
+## Flow
+
+`form` (`DownloadForm`) → `picking` (`QualityPicker`, driven by `useAnalyzeJob`) →
+`downloading` (`JobCard`, driven by `useDownloadJob`) — orchestrated in `App.tsx` as
+an explicit `Flow` state, not merged into one state machine. Quality and the
+transcript checkbox are chosen in `QualityPicker` (after analyze returns real,
+video-specific data — `has_captions` is a hint next to the checkbox, not a hard
+gate), not in the initial form.
 
 ## Conventions
 
