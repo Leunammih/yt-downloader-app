@@ -57,6 +57,20 @@
     the analyze-failure card, and the new Settings "Downloads on iPhone" tips card.
   - `tsc -b` and `vite build` clean.
 
+- "Check for updates" in Settings: switched from `registerType: 'autoUpdate'` (silent,
+  no button to hang UI off of) to `'prompt'` + manual `virtual:pwa-register`
+  (`src/lib/pwaUpdate.ts`) so there's an explicit control instead of hoping the
+  background auto-update timing works out — this is also why the very first deploy
+  under the old `autoUpdate` setting needed a second manual reload to show the new
+  build. Button states: Checking… → "You're on the latest version" (after a 10s
+  window with nothing found) or "A new version is ready" + **Update now**.
+  Verified against the real built+served output (`vite preview`, not dev mode,
+  since dev doesn't register a service worker at all): checking → up-to-date path
+  confirmed end-to-end against a real `ServiceWorkerRegistration`. The
+  found-an-update → **Update now** → reload path is implemented per
+  `vite-plugin-pwa`'s documented API but not directly exercised (would need an
+  actual second deployed version mid-test to trigger `onNeedRefresh` for real).
+
 ## Open markers
 
 - 🟦 TASK · shortcut1 — build the 3-action Share Sheet Shortcut (steps in backend
@@ -65,19 +79,15 @@
 
 ## Check on your phone (current)
 
-1. **Download** tab → paste a YouTube link → **Continue** → expect a short
-   "Analyzing…" card, then a list of real resolution buttons (not a fixed
-   1080/720/480/360 set — whatever that specific video actually has) with approx
-   sizes, plus "captions available" / "none found" next to the transcript checkbox.
-2. Pick a lower resolution (e.g. the smallest) → **Download** → expect the progress
-   card to show a moving **percentage and a filling bar**, not just a pulsing dot.
-3. Once ready → **Save to Files** → open the saved video's info in Files (or
-   AVPlayer/QuickLook) → confirm its resolution actually matches what you picked,
-   not always 1080p.
-4. **Settings** tab → scroll down → confirm a new "Downloads on iPhone" card
-   explains the save-folder setting and Safari's own Downloads button.
-5. Try **Back** from the quality-picker screen → confirm it returns to the link
-   form cleanly (not stuck, not double-submitting).
+1. **Settings** tab → tap **Check for updates** → expect "Checking…" then, since
+   this is already the latest build, "You're on the latest version" within ~10s.
+2. Confirm the **Build** line at the bottom still updates normally after any future
+   push (it already did across earlier iterations) — this is the plainest proof
+   the update mechanism isn't silently broken.
+3. (Optional, only meaningful next time there's a *newer* build to check against
+   from an older installed one): tap **Check for updates** on a stale Home Screen
+   install → expect "A new version is ready" → **Update now** → app reloads on the
+   new build, Build line changes to match.
 
 ## Exact next step
 

@@ -26,10 +26,13 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // autoUpdate, unlike the Health Tracker's 'prompt': there's no in-progress
-      // form data here worth protecting from a surprise reload — a stale download
-      // form is nothing to lose, so just always run the newest build.
-      registerType: 'autoUpdate',
+      // 'prompt', not 'autoUpdate': Settings has an explicit "Check for updates"
+      // button (src/lib/pwaUpdate.ts) so a new build activates when Immanuel taps
+      // it, not silently mid-session. injectRegister: false because that button
+      // needs a real updateSW() handle from virtual:pwa-register — the plugin's
+      // auto-injected script doesn't expose one.
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'YT Downloader',

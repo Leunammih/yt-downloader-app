@@ -1,14 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { testConnection, type GitHubConfig } from '../lib/github'
+import { applyUpdate, checkForUpdate, isUpdateReady, subscribeToUpdateReady } from '../lib/pwaUpdate'
 
 interface Props {
   cfg: GitHubConfig
   onChange: (cfg: GitHubConfig) => void
 }
 
+type UpdateState = 'idle' | 'checking' | 'ready' | 'up-to-date' | 'unsupported'
+
+// A new build takes 5-10s to fetch/compare/install once found — give it a real
+// window before concluding there's nothing new, rather than a hair-trigger timeout.
+const CHECK_TIMEOUT_MS = 10_000
+
 export default function Settings({ cfg, onChange }: Props) {
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [testing, setTesting] = useState(false)
+  const [updateState, setUpdateState] = useState<UpdateState>(isUpdateReady() ? 'ready' : 'idle')
+  const timeoutRef = useRef<number | null>(null)
 
   const runTest = async () => {
     setTesting(true)
@@ -16,6 +25,31 @@ export default function Settings({ cfg, onChange }: Props) {
     const result = await testConnection(cfg)
     setTestResult(result.ok ? { ok: true, message: 'Connected.' } : { ok: false, message: result.message })
     setTesting(false)
+  }
+
+  // Fires if a check we kicked off finds an update, including one that lands
+  // after our own timeout already gave up and said "up to date".
+  useEffect(() => {
+    return subscribeToUpdateReady(() => {
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current)
+      setUpdateState('ready')
+    })
+  }, [])
+
+  useEffect(() => () => {
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current)
+  }, [])
+
+  const runUpdateCheck = async () => {
+    setUpdateState('checking')
+    const result = await checkForUpdate()
+    if (result === 'unsupported') {
+      setUpdateState('unsupported')
+      return
+    }
+    timeoutRef.current = window.setTimeout(() => {
+      setUpdateState((s) => (s === 'ready' ? s : 'up-to-date'))
+    }, CHECK_TIMEOUT_MS)
   }
 
   return (
@@ -90,6 +124,37 @@ export default function Settings({ cfg, onChange }: Props) {
             toolbar.
           </li>
         </ul>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={runUpdateCheck}
+          disabled={updateState === 'checking'}
+          className="self-start rounded-xl border border-zinc-300 px-4 py-3 text-sm font-medium text-zinc-700 active:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:active:bg-zinc-800"
+        >
+          {updateState === 'checking' ? 'Checking…' : 'Check for updates'}
+        </button>
+
+        {updateState === 'ready' && (
+          <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-950">
+            <p className="text-sm text-red-800 dark:text-red-300">A new version is ready.</p>
+            <button
+              onClick={() => applyUpdate()}
+              className="ml-auto rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white active:bg-red-700"
+            >
+              Update now
+            </button>
+          </div>
+        )}
+        {updateState === 'up-to-date' && (
+          <p className="text-sm text-emerald-600 dark:text-emerald-400">You're on the latest version.</p>
+        )}
+        {updateState === 'unsupported' && (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            No app update to check — you're viewing this in a plain browser tab, not
+            the installed version.
+          </p>
+        )}
       </div>
 
       <p className="text-xs text-zinc-400 dark:text-zinc-500">Build {__BUILD_ID__}</p>

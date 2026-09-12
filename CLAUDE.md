@@ -5,7 +5,11 @@ backend repo — see its `CLAUDE.md` for the workflow/cookies side).
 
 ## Stack
 
-- Vite + React + TypeScript + Tailwind, `vite-plugin-pwa` (`registerType: 'autoUpdate'`)
+- Vite + React + TypeScript + Tailwind, `vite-plugin-pwa` (`registerType: 'prompt'`,
+  `injectRegister: false` — manual registration via `virtual:pwa-register` in
+  `src/lib/pwaUpdate.ts`, so Settings' "Check for updates" button has a real
+  `updateSW()` handle instead of relying on the plugin's auto-injected script,
+  which activates a new build silently with no button to hang UI off of)
 - No backend of its own — talks directly to the GitHub REST API with a user-supplied
   fine-grained PAT, stored in `localStorage` only
 - Live at https://leunammih.github.io/yt-downloader-app/ — pushing to `main` auto-deploys
@@ -47,6 +51,16 @@ an explicit `Flow` state, not merged into one state machine. Quality and the
 transcript checkbox are chosen in `QualityPicker` (after analyze returns real,
 video-specific data — `has_captions` is a hint next to the checkbox, not a hard
 gate), not in the initial form.
+
+## Updates
+
+Settings' "Check for updates" forces `registration.update()` (bypasses normal HTTP
+caching for `sw.js`, per the Service Worker spec), then waits up to 10s for
+`onNeedRefresh` before concluding "you're on the latest version" — a new build
+takes a few seconds to fetch/byte-compare/install, so that's a real window, not a
+hair-trigger. "Update now" calls the `updateSW(true)` handle, which messages the
+waiting worker to skip waiting and reloads once it takes over. All of this lives in
+`src/lib/pwaUpdate.ts`; `main.tsx` calls `initPWAUpdate()` once at startup.
 
 ## Conventions
 
